@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.29.47.4906",
-      "templateHash": "12364394548435544377"
+      "templateHash": "4952401511828995078"
     }
   },
   "parameters": {
@@ -39,6 +39,20 @@
       "metadata": {
         "description": "The name of the storage account"
       }
+    },
+    "indexDocument": {
+      "type": "string",
+      "defaultValue": "index.html",
+      "metadata": {
+        "description": "Index document name for static website"
+      }
+    },
+    "errorDocument": {
+      "type": "string",
+      "defaultValue": "error.html",
+      "metadata": {
+        "description": "Error document name for static website"
+      }
     }
   },
   "resources": [
@@ -51,7 +65,23 @@
         "name": "[parameters('storageAccountType')]"
       },
       "kind": "StorageV2",
-      "properties": {}
+      "properties": {
+        "accessTier": "Hot",
+        "supportsHttpsTrafficOnly": true,
+        "allowBlobPublicAccess": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/staticWebsite",
+      "apiVersion": "2022-09-01",
+      "name": "[format('{0}/{1}', parameters('storageAccountName'), format('{0}-staticwebsite', parameters('storageAccountName')))]",
+      "properties": {
+        "indexDocument": "[parameters('indexDocument')]",
+        "error404Document": "[parameters('errorDocument')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+      ]
     }
   ],
   "outputs": {
@@ -62,6 +92,10 @@
     "storageAccountId": {
       "type": "string",
       "value": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+    },
+    "staticWebsiteUrl": {
+      "type": "string",
+      "value": "[format('https://{0}.z13.web.core.windows.net', parameters('storageAccountName'))]"
     }
   }
 }
