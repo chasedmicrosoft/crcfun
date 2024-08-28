@@ -1,0 +1,12 @@
+# Set context
+az account set -s <SUB_ID>
+
+# Set Global Vars
+RESOURCE_GROUP="<RG_NAME>
+$URI
+
+# Deploy storage account
+az deployment group create --resource-group $RESOURCE_GROUP --template-uri "URI"
+
+#Upload static website code files
+IDK
