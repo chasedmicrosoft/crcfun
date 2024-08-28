@@ -17,13 +17,7 @@ param location string = resourceGroup().location
 @description('The name of the storage account')
 param storageAccountName string = 'store${uniqueString(resourceGroup().id)}'
 
-@description('Index document name for static website')
-param indexDocument string = 'index.html'
-
-@description('Error document name for static website')
-param errorDocument string = 'error.html'
-
-resource sa 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+resource sa 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
   location: location
   sku: {
@@ -31,21 +25,95 @@ resource sa 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   }
   kind: 'StorageV2'
   properties: {
-    accessTier: 'Hot'
-    supportsHttpsTrafficOnly: true
+    defaultToOAuthAuthentication: false
+    allowCrossTenantReplication: false
+    minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: true
+    allowSharedKeyAccess: true
+    networkAcls: {
+      bypass: 'AzureServices'
+      virtualNetworkRules: []
+      ipRules: []
+      defaultAction: 'Allow'
+    }
+    supportsHttpsTrafficOnly: true
+    encryption: {
+      services: {
+        file: {
+          keyType: 'Account'
+          enabled: true
+        }
+        blob: {
+          keyType: 'Account'
+          enabled: true
+        }
+      }
+      keySource: 'Microsoft.Storage'
+    }
+    accessTier: 'Hot'
   }
 }
 
-resource staticWebsite 'Microsoft.Storage/storageAccounts/staticWebsite@2022-09-01' = {
-  name: '${sa.name}-staticwebsite'
+resource sa_blob 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
   parent: sa
+  name: 'default'
   properties: {
-    indexDocument: indexDocument
-    error404Document: errorDocument
+    cors: {
+      corsRules: []
+    }
+    deleteRetentionPolicy: {
+      allowPermanentDelete: false
+      enabled: false
+    }
   }
 }
 
-output storageAccountName string = storageAccountName
-output storageAccountId string = sa.id
-output staticWebsiteUrl string = 'https://${storageAccountName}.z13.web.core.windows.net'
+resource sa_file 'Microsoft.Storage/storageAccounts/fileServices@2023-05-01' = {
+  parent: sa
+  name: 'default'
+  properties: {
+    protocolSettings: {
+      smb: {}
+    }
+    cors: {
+      corsRules: []
+    }
+    shareDeleteRetentionPolicy: {
+      enabled: true
+      days: 7
+    }
+  }
+}
+
+resource sa_queue 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' = {
+  parent: sa
+  name: 'default'
+  properties: {
+    cors: {
+      corsRules: []
+    }
+  }
+}
+
+resource sa_table 'Microsoft.Storage/storageAccounts/tableServices@2023-05-01' = {
+  parent: sa
+  name: 'default'
+  properties: {
+    cors: {
+      corsRules: []
+    }
+  }
+}
+
+resource sa_web_blob 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: sa_blob
+  name: '$web'
+  properties: {
+    immutableStorageWithVersioning: {
+      enabled: false
+    }
+    defaultEncryptionScope: '$account-encryption-key'
+    denyEncryptionScopeOverride: false
+    publicAccess: 'None'
+  }
+}
